@@ -24,10 +24,56 @@ const FormFields = props => {
     return show ? <label>{label}</label> : null;
   };
 
-  const changeHandler = (e, id) => {
-    const newState = props.formData;
+  const changeHandler = (e, id, blur) => {
+    const newState = { ...props.formData };
     newState[id].value = e.target.value;
+
+    // only validate data when we remove focus from element
+    if (blur) {
+      let validData = validate(newState[id]);
+      // validData -> [bool, string]
+      newState[id].valid = validData[0];
+      newState[id].validationMessage = validData[1];
+    }
+    // set touched property to true once we blur out
+    newState[id].touched = blur;
+
     props.change(newState);
+  };
+
+  const validate = element => {
+    console.log(element);
+    let error = [true, ""];
+
+    if (element.validation.minLength) {
+      const valid = element.value.length >= element.validation.minLength;
+      const message = `${
+        !valid
+          ? "Must be greater than " + element.validation.minLength + " letters"
+          : ""
+      }`;
+      error = !valid ? [valid, message] : error;
+    }
+
+    if (element.validation.required) {
+      const valid = element.value.trim() !== "";
+      const message = `${!valid ? "This field is required" : ""}`;
+
+      // if not valid, we provide new array with valid=false + msg
+      error = !valid ? [valid, message] : error;
+    }
+    return error;
+  };
+
+  const showValidation = data => {
+    let errorMessage = null;
+
+    if (data.validation && !data.valid) {
+      errorMessage = (
+        <div className="label_error">{data.validationMessage}</div>
+      );
+    }
+    return errorMessage;
   };
 
   const renderTemplates = data => {
@@ -42,8 +88,10 @@ const FormFields = props => {
             <input
               {...values.config}
               value={values.value}
-              onChange={e => changeHandler(e, data.id)}
+              onBlur={e => changeHandler(e, data.id, true)}
+              onChange={e => changeHandler(e, data.id, false)}
             />
+            {showValidation(values)}
           </div>
         );
         break;
@@ -54,8 +102,10 @@ const FormFields = props => {
             <textarea
               {...values.config}
               value={values.value}
-              onChange={e => changeHandler(e, data.id)}
+              onBlur={e => changeHandler(e, data.id, true)}
+              onChange={e => changeHandler(e, data.id, false)}
             />
+            {showValidation(values)}
           </div>
         );
         break;
